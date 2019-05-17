@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/aop
+      http://www.springframework.org/schema/aop/spring-aop-3.2.xsd
+      http://www.springframework.org/schema/mvc
+      http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+      http://www.springframework.org/schema/beans
+      http://www.springframework.org/schema/beans/spring-beans.xsd
+      http://www.springframework.org/schema/tx
+      http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+      http://www.springframework.org/schema/context
+      http://www.springframework.org/schema/context/spring-context-3.2.xsd">
+
+    <!-- BEGIN=== 为业务层增加声明式事务管理的相关配置 ===BEGIN-->
+    <!-- 6、配置事务管理器 -->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+    <!-- 7、使用tx:advice去配置声明式事务增强，并设置事务的属性 -->
+    <tx:advice transaction-manager="transactionManager" id="txTransManager">
+        <tx:attributes>
+            <tx:method name="get*" propagation="SUPPORTS"/>
+            <tx:method name="query*" propagation="SUPPORTS"/>   <!--SUPPORTS如果没有事务则使用非事务方式执行-->
+            <tx:method name="insert*" propagation="REQUIRED"/>  <!-- 新增的方法 -->
+            <tx:method name="update*" propagation="REQUIRED"/>  <!-- 修改的方法 -->
+            <tx:method name="del*" propagation="REQUIRED"/>     <!--REQUIRED如果没有事务则开一个新的事务-->
+        </tx:attributes>
+    </tx:advice>
+
+    <!-- END=== 为业务层增加声明式事务管理的相关配置 ===END-->
+
+    <!-- 定义一个切面 -->
+    <aop:config>
+        <!-- 定义一个切入点, 将声明式事务管理切入到指定的包、类中的方法里 -->
+        <aop:pointcut id="pointcut" expression="execution(* cn.twt.service..*(..))"/>
+        <!-- 利用aop:advisor标签将声明式事务管理与切入点结合在一起， 将声明式事务管理切入到指定的包、类中的方法里 -->
+        <aop:advisor advice-ref="txTransManager" pointcut-ref="pointcut"/>
+    </aop:config>
+
+    <!--5、引用database.properties文件-->
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:database.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <!--4、创建dataSource数据源对象-->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+        <property name="driverClassName" value="${jdbc.driver}"/>
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+
+    <!--3、创建SqlSessionFactoryBean实例对象-->
+    <bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <!--1、引入数据源对象-->
+        <property name="dataSource" ref="dataSource"/>
+        <!--2、引入mybatis配置文件的路径-->
+        <property name="configLocation" value="classpath:mybatis-config.xml"/>
+        <!--3、初始化Mapping映射文件-->
+        <property name="mapperLocations">
+            <list>
+                <value>classpath:cn/twt/dao/*.xml</value>
+            </list>
+        </property>
+    </bean>
+
+    <!--2、简化dao层的配置， 添加对MapperScannerConfig的配置-->
+    <!--好处：1. 为cn.bug.dao包中所有的接口创建接口实现类
+              2、为接口实现类注入所需要的SqlSessionFactoryBean实例对象-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="cn.twt.dao"/>
+    </bean>
+
+    <!--1、让spring自动cn.bug.service,cn.bug.dao下去描述包下的所有类，让类中标注的注解生效(简化service层的配置)-->
+    <context:component-scan base-package="cn.twt.service,cn.twt.dao"/>
+
+</beans>
