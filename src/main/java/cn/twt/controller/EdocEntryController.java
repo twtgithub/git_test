@@ -38,6 +38,6 @@ public class EdocEntryController {
         if (edocEntryService.delEdocEntry(id)>0){
             return "true";
         }
-        return "false";
+        return "false";   12345679879879798
     }
 }
